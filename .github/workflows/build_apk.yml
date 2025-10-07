@@ -1,14 +1,21 @@
 name: Build JARVIS APK
 
 on:
+<<<<<<< HEAD
   push:
     branches:
       - main
+=======
+push:
+branches:
+- main
+>>>>>>> 8855add (fix: add cython install step)
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
+<<<<<<< HEAD
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -67,3 +74,66 @@ jobs:
         with:
           name: Jarvis-APK
           path: bin/*.apk
+=======
+steps:  
+  - name: Checkout repository  
+    uses: actions/checkout@v3  
+
+  - name: Set up Python  
+    uses: actions/setup-python@v4  
+    with:  
+      python-version: '3.10'  
+
+  - name: Install Android SDK & AIDL (manual)  
+    run: |  
+      sudo apt-get update  
+      sudo apt-get install -y openjdk-11-jdk wget unzip curl  
+
+      mkdir -p $HOME/android-sdk/cmdline-tools  
+      cd $HOME/android-sdk/cmdline-tools  
+      wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip  
+      unzip tools.zip -d tools  
+      yes | tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses  
+      yes | tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk \  
+        "platform-tools" "platforms;android-33" "build-tools;33.0.2"  
+
+      # Manually copy AIDL  
+      AIDL_PATH="$HOME/android-sdk/build-tools/33.0.2/aidl"  
+      if [ ! -f "$AIDL_PATH" ]; then  
+        echo "Downloading AIDL manually..."  
+        mkdir -p $HOME/android-sdk/build-tools/33.0.2  
+        curl -L -o $AIDL_PATH https://android.googlesource.com/platform/system/tools/aidl/+/refs/heads/master/aidl.cpp?format=TEXT  
+        chmod +x $AIDL_PATH  
+      fi  
+
+      export PATH=$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.2:$PATH  
+      which aidl || echo "AIDL manually placed."  
+
+  - name: Install Python dependencies  
+    run: |  
+      sudo apt install -y python3-pip build-essential git zip unzip  
+      python3 -m pip install --upgrade pip setuptools wheel  
+      pip install cython
+      pip install kivy pyttsx3 SpeechRecognition buildozer cython  
+
+  - name: Prepare Buildozer  
+    run: |  
+      buildozer init  
+      sed -i 's/package.name = .*/package.name = jarvis_app/' buildozer.spec  
+      sed -i 's/package.domain = .*/package.domain = org.jarvis/' buildozer.spec  
+      echo "title = Jarvis App" >> buildozer.spec  
+      echo "android.sdk_path = $HOME/android-sdk" >> buildozer.spec  
+
+  - name: Build APK  
+    run: |  
+      export PATH=$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.2:$PATH  
+      buildozer -v android debug  
+
+  - name: Upload APK artifact  
+    uses: actions/upload-artifact@v4  
+    with:  
+      name: Jarvis-APK  
+      path: bin/*.apk
+
+
+>>>>>>> 8855add (fix: add cython install step)
