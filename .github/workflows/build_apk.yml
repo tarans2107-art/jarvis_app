@@ -18,15 +18,24 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Android SDK tools
+      - name: Install Android SDK & AIDL
         run: |
           sudo apt-get update
-          sudo apt-get install -y android-sdk adb aidl
+          sudo apt-get install -y openjdk-11-jdk wget unzip
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmd.zip
+          unzip cmd.zip -d cmdline-tools
+          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
+          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      - name: Install dependencies
+          # Verify AIDL tool path
+          export PATH=$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.2:$PATH
+          which aidl || echo "AIDL not found!"
+
+      - name: Install Python dependencies
         run: |
-          sudo apt update
-          sudo apt install -y git zip unzip openjdk-11-jdk python3-pip build-essential
+          sudo apt install -y python3-pip build-essential git zip unzip
           python3 -m pip install --upgrade pip setuptools wheel
           pip install kivy pyttsx3 SpeechRecognition buildozer cython
 
@@ -36,10 +45,11 @@ jobs:
           sed -i 's/package.name = .*/package.name = jarvis_app/' buildozer.spec
           sed -i 's/package.domain = .*/package.domain = org.jarvis/' buildozer.spec
           echo "title = Jarvis App" >> buildozer.spec
-          echo "android.sdk_path = /usr/lib/android-sdk" >> buildozer.spec
+          echo "android.sdk_path = $HOME/android-sdk" >> buildozer.spec
 
       - name: Build APK
         run: |
+          export PATH=$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.2:$PATH
           buildozer -v android debug
 
       - name: Upload APK artifact
