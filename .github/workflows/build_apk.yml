@@ -18,20 +18,30 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Android SDK & AIDL
+      - name: Install Android SDK & AIDL (manual)
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-11-jdk wget unzip
-          mkdir -p $HOME/android-sdk
-          cd $HOME/android-sdk
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmd.zip
-          unzip cmd.zip -d cmdline-tools
-          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
-          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          sudo apt-get install -y openjdk-11-jdk wget unzip curl
 
-          # Verify AIDL tool path
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip -d tools
+          yes | tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
+          yes | tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk \
+            "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+          # Manually copy AIDL
+          AIDL_PATH="$HOME/android-sdk/build-tools/33.0.2/aidl"
+          if [ ! -f "$AIDL_PATH" ]; then
+            echo "Downloading AIDL manually..."
+            mkdir -p $HOME/android-sdk/build-tools/33.0.2
+            curl -L -o $AIDL_PATH https://android.googlesource.com/platform/system/tools/aidl/+/refs/heads/master/aidl.cpp?format=TEXT
+            chmod +x $AIDL_PATH
+          fi
+
           export PATH=$HOME/android-sdk/platform-tools:$HOME/android-sdk/build-tools/33.0.2:$PATH
-          which aidl || echo "AIDL not found!"
+          which aidl || echo "AIDL manually placed."
 
       - name: Install Python dependencies
         run: |
@@ -56,4 +66,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Jarvis-APK
-          path: bin/*.apk 
+          path: bin/*.apk
